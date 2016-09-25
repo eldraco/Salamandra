@@ -49,7 +49,6 @@ def process_line(line):
         if detection_value >= dbm_threshold:
             print '\t\tDetection in freq: {} with Dbm {}. Time: {}'.format(detection_freq, max_value, time+' '+hour)
         # 2 When more than threshold freqencies are over the threshold
-        print detection_dict
         if len(detection_dict) >= args.detfreqthreshold:
             print '\t\tDetection because {} freq were over the threshold: {}. Time: {}'.format(len(detection_dict), dbm_threshold, time+' '+hour)
 
