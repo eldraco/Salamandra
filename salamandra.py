@@ -8,6 +8,9 @@
 import argparse
 import sys
 from datetime import datetime
+import time
+from subprocess import Popen
+from subprocess import PIPE
 
 default_threshold = 10.8
 version = 0.4
@@ -103,8 +106,14 @@ def process_file():
     f.close()
 
 def process_stdin():
+    #command = 'rtl_power -f 100M:600M:4000Khz -g 25 -i 1 -e 7200 -'
+    #p = Popen(command, shell=True, stdin=PIPE)
+    #p.communicate()
+    # dist_path,error = Popen('bash -i -c "type distribution"', shell=True, stderr=PIPE, stdin=PIPE, stdout=PIPE).communicate()
     read_lines = 0
+    #line = p.readline()
     for line in sys.stdin:
+    #while line:
         process_line(line)
         read_lines += 1
     if args.verbose:
@@ -133,12 +142,18 @@ if args.verbose > 0:
 if args.sound:
     import pygame.mixer
     pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=8196)
+    pygame.mixer.music.load('start3.mp3')
+    pygame.mixer.music.play()
+    time.sleep(1)
     pygame.mixer.music.load('detection.mp3')
+
 
 if args.file == '-':
     process_stdin()
 elif args.file != '-':
     process_file()
+
+
 
 
 
