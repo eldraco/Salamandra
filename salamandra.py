@@ -108,7 +108,11 @@ def process_file():
 
 def process_stdin():
     read_lines = 0
-    command = 'rtl_power -f 112M:114M:4000Khz -g 25 -i 1 -e 7200 -'
+    #command = 'rtl_power -f 112M:114M:4000Khz -g 25 -i 1 -e 7200 -'
+    #command = 'rtl_power -f 100M:2700M:4000Khz -g 25 -i 1 -e 7200 -'
+    #command = 'rtl_power -f 100M:1700M:8000Khz -g 25 -i 1 -e 7200 -'
+    #command = 'rtl_power -f 100M:1000M:4000Khz -g 25 -i 1 -e 7200 -'
+    command = 'rtl_power -f 100M:110M:4000Khz -g 25 -i 1 -e 7200 -'
     p = Popen(command, shell=True, stdout=PIPE, bufsize=1)
     line = p.stdout.readline()
     while line:
