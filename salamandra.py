@@ -10,6 +10,7 @@ import sys
 from datetime import datetime
 import time
 from subprocess import Popen
+from subprocess import STDOUT
 from subprocess import PIPE
 
 default_threshold = 10.8
@@ -106,21 +107,17 @@ def process_file():
     f.close()
 
 def process_stdin():
-    #command = 'rtl_power -f 100M:600M:4000Khz -g 25 -i 1 -e 7200 -'
-    #p = Popen(command, shell=True, stdin=PIPE)
-    #p.communicate()
-    # dist_path,error = Popen('bash -i -c "type distribution"', shell=True, stderr=PIPE, stdin=PIPE, stdout=PIPE).communicate()
     read_lines = 0
-    #line = p.readline()
-    for line in sys.stdin:
-    #while line:
+    command = 'rtl_power -f 112M:114M:4000Khz -g 25 -i 1 -e 7200 -'
+    p = Popen(command, shell=True, stdout=PIPE, bufsize=1)
+    line = p.stdout.readline()
+    while line:
         process_line(line)
         read_lines += 1
+        line = p.stdout.readline()
     if args.verbose:
         print 'Processed Lines: {}'.format(proc_lines)
         print 'Original Lines: {}'.format(read_lines)
-
-
 
 ####################
 # Main
