@@ -59,9 +59,11 @@ def process_line(line):
         # 2 When more than threshold freqencies are over the threshold
         if len(detection_dict) >= args.detfreqthreshold:
             print '\t\tDetection because {} freq were over the threshold: {}. Time: {}'.format(len(detection_dict), dbm_threshold, time+' '+hour)
+            if args.sound:
+                pygame.mixer.music.play()
 
         else:
-            if args.verbose:
+            if args.verbose > 1:
                 print '\t\tNo detection'
     elif args.search:
         # Get the freqs in the detection
@@ -108,11 +110,12 @@ def process_file():
 
 def process_stdin():
     read_lines = 0
-    #command = 'rtl_power -f 112M:114M:4000Khz -g 25 -i 1 -e 7200 -'
-    #command = 'rtl_power -f 100M:2700M:4000Khz -g 25 -i 1 -e 7200 -'
-    #command = 'rtl_power -f 100M:1700M:8000Khz -g 25 -i 1 -e 7200 -'
-    #command = 'rtl_power -f 100M:1000M:4000Khz -g 25 -i 1 -e 7200 -'
-    command = 'rtl_power -f 100M:110M:4000Khz -g 25 -i 1 -e 7200 -'
+    # Specific for a given frequency at 113Mhz
+    #command = 'rtl_power -f 113M:114M:4000Khz -g 25 -i 1 -e 14400 -'
+    # Range of normal FM transmitters
+    #command = 'rtl_power -f 102M:900M:4000Khz -g 25 -i 1 -e 14400 -'
+    # Complete range of the DVB-T+DAB+FM
+    command = 'rtl_power -f 100M:1760M:4000Khz -g 25 -i 1 -e 14400 -'
     p = Popen(command, shell=True, stdout=PIPE, bufsize=1)
     line = p.stdout.readline()
     while line:
@@ -130,10 +133,10 @@ def process_stdin():
 # Parse the parameters
 parser = argparse.ArgumentParser()
 parser.add_argument('-f', '--file', help='CSV file from rtl_power.', action='store', required=True)
-parser.add_argument('-t', '--threshold', help='DBm threshold.', action='store', required=True, type=float, default=default_threshold)
+parser.add_argument('-t', '--threshold', help='DBm threshold. First threshold in our paper.', action='store', required=True, type=float, default=default_threshold)
 parser.add_argument('-v', '--verbose', help='Verbose level.', action='store', required=False, type=int, default=0)
-parser.add_argument('-F', '--detfreqthreshold', help='Threshold of the amount of frequencies that should be over the dbm threshold to have a detection.', action='store', required=False, type=int, default=1)
-parser.add_argument('-s', '--search', help='Search mode. Prints the amount of frequencies found to be over the specified threshold of -t. The more, the closer.', action='store_true', required=False)
+parser.add_argument('-F', '--detfreqthreshold', help='Second threshold in our paper. It is the threshold of the amount of frequencies that should be over the dbm threshold to have a detection.', action='store', required=False, type=int, default=1)
+parser.add_argument('-s', '--search', help='Search mode. Prints the amount of frequencies found to be over the specified threshold of -t. The more, the closer. In this mode, the -F threshold is not used.', action='store_true', required=False)
 parser.add_argument('-S', '--sound', help='Play a sound when there is some detection in this time frame.', action='store_true', required=False)
 args = parser.parse_args()
 if args.verbose > 0:
@@ -148,12 +151,13 @@ if args.sound:
     time.sleep(1)
     pygame.mixer.music.load('detection.mp3')
 
-
-if args.file == '-':
-    process_stdin()
-elif args.file != '-':
-    process_file()
-
+try:
+    if args.file == '-':
+        process_stdin()
+    elif args.file != '-':
+        process_file()
+except KeyboardInterrupt:
+    print 'Exiting.'
 
 
 
