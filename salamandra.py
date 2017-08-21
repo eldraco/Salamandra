@@ -113,9 +113,12 @@ def process_stdin():
     # Specific for a given frequency at 113Mhz
     #command = 'rtl_power -f 113M:114M:4000Khz -g 25 -i 1 -e 14400 -'
     # Range of normal FM transmitters
-    #command = 'rtl_power -f 102M:900M:4000Khz -g 25 -i 1 -e 14400 -'
+    #command = 'rtl_power -f 100M:900M:4000Khz -g 25 -i 1 -e 14400 -'
+    # For Baby Monitor
+    #command = 'rtl_power -f 600M:900M:4000Khz -g 25 -i 1 -e 14400 -'
     # Complete range of the DVB-T+DAB+FM
-    command = 'rtl_power -f 100M:1760M:4000Khz -g 25 -i 1 -e 14400 -'
+    #command = 'rtl_power -f 50M:1760M:4000Khz -g 25 -i 1 -e 14400 -'
+    command = 'rtl_power -f 200M:1760M:4000Khz -g 25 -i 1 -e 14400 -'
     p = Popen(command, shell=True, stdout=PIPE, bufsize=1)
     line = p.stdout.readline()
     while line:
@@ -132,7 +135,7 @@ def process_stdin():
 
 # Parse the parameters
 parser = argparse.ArgumentParser()
-parser.add_argument('-f', '--file', help='CSV file from rtl_power.', action='store', required=True)
+parser.add_argument('-f', '--file', help='CSV file from rtl_power.', action='store', required=False)
 parser.add_argument('-t', '--threshold', help='DBm threshold. First threshold in our paper.', action='store', required=True, type=float, default=default_threshold)
 parser.add_argument('-v', '--verbose', help='Verbose level.', action='store', required=False, type=int, default=0)
 parser.add_argument('-F', '--detfreqthreshold', help='Second threshold in our paper. It is the threshold of the amount of frequencies that should be over the dbm threshold to have a detection.', action='store', required=False, type=int, default=1)
@@ -152,10 +155,11 @@ if args.sound:
     pygame.mixer.music.load('detection.mp3')
 
 try:
-    if args.file == '-':
-        process_stdin()
-    elif args.file != '-':
+    if args.file:
         process_file()
+    else:
+        process_stdin()
+
 except KeyboardInterrupt:
     print 'Exiting.'
 
