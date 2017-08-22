@@ -117,8 +117,8 @@ def process_stdin():
     # For Baby Monitor
     #command = 'rtl_power -f 600M:900M:4000Khz -g 25 -i 1 -e 14400 -'
     # Complete range of the DVB-T+DAB+FM
-    #command = 'rtl_power -f 50M:1760M:4000Khz -g 25 -i 1 -e 14400 -'
-    command = 'rtl_power -f 200M:1760M:4000Khz -g 25 -i 1 -e 14400 -'
+    command = 'rtl_power -f 50M:1760M:4000Khz -g 25 -i 1 -e 14400 -'
+    #command = 'rtl_power -f 200M:1760M:4000Khz -g 25 -i 1 -e 14400 -'
     p = Popen(command, shell=True, stdout=PIPE, bufsize=1)
     line = p.stdout.readline()
     while line:
