@@ -84,19 +84,19 @@ def process_line(line, ui):
         line += "#" * len(detection_dict) 
         # Print the lines
         if args.verbose == 0 and len(detection_dict) > 0:
-            print line
+            #print line
             ui.update_histogram(line)
             if args.sound:
                 pygame.mixer.music.play()
         elif args.verbose == 1 and len(detection_dict) > 0:
-            print line
+            #print line
             ui.update_histogram(line)
             print '\t[' + freq_line + ']'
             if args.sound:
                 pygame.mixer.music.play()
         elif args.verbose > 1:
             # Print even if there is no detection
-            print line
+            #print line
             ui.update_histogram(line)
             # Print even if there is no detection, plus freqs
             if  freq_line:
@@ -116,6 +116,7 @@ def process_file(ui):
         sys.exit(-1)
     for line in f:
         process_line(line, ui)
+        ui.ask()
     f.close()
 
 def process_stdin(ui):
@@ -134,12 +135,15 @@ def process_stdin(ui):
     # For Baby Monitor
     #command = 'rtl_power -f 600M:900M:4000Khz -g 25 -i 1 -e 14400 -'
     # Complete range of the DVB-T+DAB+FM
-    command = 'rtl_power -f 50M:1760M:4000Khz -g 25 -i 1 -e 14400 -'
+    #command = 'rtl_power -f 50M:1760M:4000Khz -g 25 -i 1 -e 14400 -'
     #command = 'rtl_power -f 200M:1760M:4000Khz -g 25 -i 1 -e 14400 -'
+    # It will run by default for 24hs
+    command = 'rtl_power -f ' + args.startgreq + 'M:' + args.endfreq + 'M:' + args.stepfreq+ 'Khz -g 25 -i 1 -e 86400 -'
     p = Popen(command, shell=True, stdout=PIPE, bufsize=1)
     line = p.stdout.readline()
     while line:
         process_line(line)
+        ui.ask()
         read_lines += 1
         line = p.stdout.readline()
     if args.verbose:
@@ -153,10 +157,12 @@ class ui:
         curses.cbreak()
         curses.curs_set(0)
         self.stdscr.keypad(1)
+        self.hist_lines = []
+        self.w1heigth = 31
 
         # curses.newwin(DOWN RIGHT CORNER y from top, DOWN RIGHT CORNER x from left , TOP LEFT CORNER y from top , TOP LEFT CORNER x from left)
         # 0 means the size of the current window
-        self.win1 = curses.newwin(31, 200, 0, 0)
+        self.win1 = curses.newwin(self.w1heigth, 204, 0, 0)
         self.win1.border(0)
         self.pan1 = curses.panel.new_panel(self.win1)
         self.win2 = curses.newwin(0, 0, 31, 0)
@@ -164,7 +170,7 @@ class ui:
         self.pan3 = curses.panel.new_panel(self.win2)
         self.win1.addstr(1, 1, "Location Signal")
         self.win2.addstr(1, 1, "Status: Active.")
-        self.win2.addstr(2, 1, "Press 's' to increase senstivity or 'q' to quit.")
+        self.win2.addstr(2, 1, "Press 's' to increase sensitivity or 'q' to quit.")
         self.pan1.hide()
 
     def refresh(self):
@@ -177,7 +183,13 @@ class ui:
         self.refresh()
 
     def update_histogram(self, text):
-        self.win1.addstr(2, 1, text)
+        self.hist_lines.append(text)
+        for lpos in range(self.w1heigth - 2, 1, -1):
+            try:
+                self.win1.addstr(lpos, 1, str(self.hist_lines[-1 - (self.w1heigth -2 - lpos)]))
+            except IndexError:
+                pass
+            self.refresh()
 
     def quit_ui(self):
         curses.nocbreak()
@@ -210,9 +222,9 @@ class runner:
         else:
             process_stdin(self.ui)
         
-        self.loop()
+    #    self.loop()
 
-    def loop(self):
+    #def loop(self):
         while self.running :
             while sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
                 line = sys.stdin.read(1)
@@ -227,7 +239,6 @@ class runner:
                     self.sensitivity -= 1
                     self.ui.refresh_sensitivity(self.sensitivity)
             self.ui.refresh()
-            #time.sleep(0.1)
 
 ####################
 # Main
@@ -241,10 +252,14 @@ if __name__ == "__main__":
     parser.add_argument('-F', '--detfreqthreshold', help='Second threshold in our paper. It is the threshold of the amount of frequencies that should be over the dbm threshold to have a detection.', action='store', required=False, type=int, default=1)
     parser.add_argument('-s', '--search', help='Search mode. Prints the amount of frequencies found to be over the specified threshold of -t. The more, the closer. In this mode, the -F threshold is not used.', action='store_true', required=False)
     parser.add_argument('-S', '--sound', help='Play a sound when there is some detection in this time frame.', action='store_true', required=False)
+    parser.add_argument('-a', '--startfreq', help='Start frequency for rtl_power. Defaults to 50 MHz', action='store_true', required=False, default=50)
+    parser.add_argument('-b', '--endfreq', help='End frequency for rtl_power. Defaults to 1760 MHz (USB device)', action='store_true', required=False, default=1760)
+    parser.add_argument('-c', '--stepfreq', help='Step frequency for rtl_power. Defaults to 4000 MHz', action='store_true', required=False, default=1760)
     args = parser.parse_args()
 
     if args.verbose > 0:
-        print 'Salamandra Hiden Microphone Detector. Version {}\n'.format(version)
+        print 'Salamandra Hidden Microphone Detector. Version {}\n'.format(version)
+
 
     if args.sound:
         import pygame.mixer
