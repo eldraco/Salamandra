@@ -9,7 +9,9 @@ Salamandra is a tool to detect and __locate__ spy microphones in closed environm
 To use salamandra you nee to have a SDR (Software Define Radio) device. It can be any from the cheap USB devices, such as [this](http://www.dx.com/p/rtl2832u-r820t-mini-dvb-t-dab-fm-usb-digital-tv-dongle-black-170541).
 
 ## rtl_power software
+
 Salamandra needs the rtl_power software installed in your computer. To install it you can do:
+
 - On MacOS: 
 
     sudo port install rtl-sdr
