@@ -10,8 +10,14 @@ To use salamandra you nee to have a SDR (Software Define Radio) device. It can b
 
 ## rtl_power software
 Salamandra needs the rtl_power software installed in your computer. To install it you can do:
-- On MacOS: sudo port install rtl-sdr
-- On Linux: apt-get install rtl-sdr
+- On MacOS: 
+
+    sudo port install rtl-sdr
+
+- On Linux: 
+
+    apt-get install rtl-sdr
+
 - On Windows: See http://www.rtl-sdr.com/getting-the-rtl-sdr-to-work-on-windows-10/
 
 If rtl_power was installed correctly, you should be able to run this command in any console:
