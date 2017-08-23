@@ -22,22 +22,23 @@ import random
 
 
 default_threshold = 10.8
-version = 0.5
-proc_lines = 0
+version = '0.5alpha'
 
 def process_line(line, ui, threshold, sound):
     """
     Process one line of input
     """
-    global proc_lines
     ui.update_status('Reading')
-    line = line.split(',')
-    time = line[0]
-    hour = line[1]
-    minfreq = line[2]
-    maxfreq = line[3]
-    step = line[4]
-    samples = line[5]
+    try:
+        line = line.split(',')
+        time = line[0]
+        hour = line[1]
+        minfreq = line[2]
+        maxfreq = line[3]
+        step = line[4]
+        samples = line[5]
+    except IndexError:
+        return False
     if args.verbose > 2:
         print 'Time: {} MinFreq: {}, Maxfreq:{}, step={}'.format(time+' '+hour, minfreq, maxfreq, step)
     # Analyze the dbm values
@@ -112,7 +113,6 @@ def process_line(line, ui, threshold, sound):
                 print '\t[' + freq_line + ']'
             if len(detection_dict) > 0 and sound:
                 pygame.mixer.music.play()
-        proc_lines += 1
 
 def process_file():
     """
@@ -148,24 +148,29 @@ class ui:
         curses.use_default_colors()
         for i in range(0, curses.COLORS):
             curses.init_pair(i + 1, i, -1)
+        self.curr_height, self.curr_width = self.stdscr.getmaxyx()
         self.stdscr.keypad(1)
         self.hist_lines = []
-        self.w1heigth = 44
+        #self.w1height = self.curr_height * 90 /100
+        self.w1height = self.curr_height - 5
+        self.w1width = self.curr_width
 
         # curses.newwin(DOWN RIGHT CORNER y from top, DOWN RIGHT CORNER x from left , TOP LEFT CORNER y from top , TOP LEFT CORNER x from left)
         # 0 means the size of the current window
-        self.win1 = curses.newwin(self.w1heigth, 204, 0, 0)
+        self.win1 = curses.newwin(self.w1height, self.w1width, 0, 0)
         self.win1.border(0)
         self.pan1 = curses.panel.new_panel(self.win1)
-        self.win2 = curses.newwin(0, 0, self.w1heigth, 0)
+        self.win2 = curses.newwin(0, 0, self.w1height, 0)
         self.win2.border(0)
         self.pan3 = curses.panel.new_panel(self.win2)
         self.win1.addstr(1, 1, "Location Signal (the more, the closer)", curses.color_pair(4))
         self.win1.addstr(2, 1, "DateTime (Amount of peaks) [Top Freq Detected MHz] Histogram", curses.color_pair(4))
         self.update_status('Active')
-        self.win2.addstr(2, 1, "Press 's' to increase the threshold (less sensitivity), 'S' to decresase the threshold (more sensitivity), 'm' to toggle sound, or 'q' to quit.", curses.color_pair(4))
+        self.win2.addstr(2, 1, "Press 's' to increase the threshold (less sensitivity), 'S' to decresase the threshold (more sensitivity).", curses.color_pair(4))
+        self.win2.addstr(3, 1, "Press 'm' to toggle sound, or 'q' to quit.", curses.color_pair(4))
         self.update_sound(args.sound)
         self.pan1.hide()
+        self.refresh()
 
     def refresh(self):
         curses.panel.update_panels()
@@ -173,17 +178,21 @@ class ui:
         self.win2.refresh()
 
     def refresh_threshold(self, threshold):
-        self.win2.addstr(1, 25, "Threshold: {}".format(threshold), curses.color_pair(4))
+        self.win2.addstr(1, 25, "Threshold: {}".format(threshold), curses.color_pair(2))
         self.refresh()
 
     def update_sound(self, sound):
         line = '{:5}'.format(str(sound))
-        self.win2.addstr(1, 45, "Sound: {}".format(line), curses.color_pair(4))
+        self.win2.addstr(1, 45, "Sound: {}".format(line), curses.color_pair(2))
         self.refresh()
 
     def update_status(self, text):
         status = '{:15.15}'.format(text)
-        self.win2.addstr(1, 1, "Status: {}".format(status), curses.color_pair(4))
+        self.win2.addstr(1, 1, "Status: {}".format(status), curses.color_pair(2))
+        self.refresh()
+
+    def update_hour(self):
+        self.win2.addstr(3, self.w1width - 45 , 'Current Time: ' + str(datetime.now()) ,curses.color_pair(9))
         self.refresh()
 
     def update_histogram(self, text):
@@ -192,12 +201,12 @@ class ui:
         """
         self.hist_lines.append(text)
         # Redraw the complete histogram, from bottom up
-        for lpos in range(self.w1heigth - 2, 2, -1):
+        for lpos in range(self.w1height - 2, 2, -1):
             try:
                 # -1 is to start from the last line
                 # - so we go down the list
-                # heigth of the window - 
-                self.win1.addstr(lpos, 1, str(self.hist_lines[-1 - (self.w1heigth - 2 - lpos)]), curses.color_pair(7))
+                # height of the window - 
+                self.win1.addstr(lpos, 1, str(self.hist_lines[-1 - (self.w1height - 2 - lpos)])[:self.w1width - 2], curses.color_pair(7))
             except IndexError:
                 pass
             self.refresh()
@@ -232,8 +241,9 @@ class runner:
 
         while self.running :
             self.ui.update_status('Active')
+            self.ui.update_hour()
             line = rfile.readline()
-            process_line(line, self.ui, self.threshold, self.sound)
+            resp = process_line(line, self.ui, self.threshold, self.sound)
             while sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
                 char = sys.stdin.read(1)
                 if char.strip() == "q":
@@ -252,12 +262,6 @@ class runner:
                 elif char.strip() == "m" and not self.sound:
                     self.sound = True
                     self.ui.update_sound(self.sound)
-                #elif char.strip() == "a":
-                #    self.startfreq += 1
-                #    self.ui.refresh_startfreq(self.startfreq)
-                #elif char.strip() == "A":
-                #    self.startfreq -= 1
-                #    self.ui.refresh_startfreq(self.startfreq)
             self.ui.refresh()
 
 ####################
@@ -278,7 +282,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.verbose > 0:
-        print 'Salamandra Hidden Microphone Detector. Version {}\n'.format(version)
+        print 'Salamandra Hidden Microphone Detector. Version {}\n'.format(str(version))
 
 
     if args.sound:
