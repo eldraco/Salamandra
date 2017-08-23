@@ -25,7 +25,7 @@ default_threshold = 10.8
 version = 0.5
 proc_lines = 0
 
-def process_line(line, ui, threshold):
+def process_line(line, ui, threshold, sound):
     """
     Process one line of input
     """
@@ -71,7 +71,7 @@ def process_line(line, ui, threshold):
         # 2 When more than threshold freqencies are over the threshold
         if len(detection_dict) >= args.detfreqthreshold:
             print '\t\tDetection because {} freq were over the threshold: {}. Time: {}'.format(len(detection_dict), dbm_threshold, time+' '+hour)
-            if args.sound:
+            if sound:
                 pygame.mixer.music.play()
         else:
             if args.verbose > 1:
@@ -93,16 +93,16 @@ def process_line(line, ui, threshold):
             top_freq = str(detect_uniq_dict[0])
         #    freq_line += ' {:0.3f}({})'.format(detection_freq, detection_dict[index]) + ','
         #freq_line = freq_line[:-1]
-        line = '{:19} [{:>3}]|[{:>6.6}]: {:160.160}'.format(str(datetime.now())[:-7], str(len(detection_dict)), top_freq ,"#" * len(detection_dict))
+        line = '{:19} ({:>3}) [{:>6.6}]: {:160.160}'.format(str(datetime.now())[:-7], str(len(detection_dict)), top_freq ,"#" * len(detection_dict))
         # Print the lines
         if args.verbose == 0 and len(detection_dict) > 0:
             ui.update_histogram(line)
-            if args.sound:
+            if sound:
                 pygame.mixer.music.play()
         elif args.verbose == 1 and len(detection_dict) > 0:
             ui.update_histogram(line)
             print '\t[' + freq_line + ']'
-            if args.sound:
+            if sound:
                 pygame.mixer.music.play()
         elif args.verbose > 1:
             # Print even if there is no detection
@@ -110,9 +110,8 @@ def process_line(line, ui, threshold):
             # Print even if there is no detection, plus freqs
             if  freq_line:
                 print '\t[' + freq_line + ']'
-            if len(detection_dict) > 0 and args.sound:
+            if len(detection_dict) > 0 and sound:
                 pygame.mixer.music.play()
-        # Play sound
         proc_lines += 1
 
 def process_file():
@@ -162,8 +161,10 @@ class ui:
         self.win2.border(0)
         self.pan3 = curses.panel.new_panel(self.win2)
         self.win1.addstr(1, 1, "Location Signal (the more, the closer)", curses.color_pair(4))
+        self.win1.addstr(2, 1, "DateTime (Amount of peaks) [Top Freq Detected MHz] Histogram", curses.color_pair(4))
         self.update_status('Active')
-        self.win2.addstr(2, 1, "Press 's' to increase the threshold (less sensitivity), 'S' to decresase the threshold (more sensitivity) or 'q' to quit.", curses.color_pair(4))
+        self.win2.addstr(2, 1, "Press 's' to increase the threshold (less sensitivity), 'S' to decresase the threshold (more sensitivity), 'm' to toggle sound, or 'q' to quit.", curses.color_pair(4))
+        self.update_sound(args.sound)
         self.pan1.hide()
 
     def refresh(self):
@@ -175,16 +176,28 @@ class ui:
         self.win2.addstr(1, 25, "Threshold: {}".format(threshold), curses.color_pair(4))
         self.refresh()
 
+    def update_sound(self, sound):
+        line = '{:5}'.format(str(sound))
+        self.win2.addstr(1, 45, "Sound: {}".format(line), curses.color_pair(4))
+        self.refresh()
+
     def update_status(self, text):
         status = '{:15.15}'.format(text)
         self.win2.addstr(1, 1, "Status: {}".format(status), curses.color_pair(4))
         self.refresh()
 
     def update_histogram(self, text):
+        """
+        Put one more line in the histogram
+        """
         self.hist_lines.append(text)
-        for lpos in range(self.w1heigth - 2, 1, -1):
+        # Redraw the complete histogram, from bottom up
+        for lpos in range(self.w1heigth - 2, 2, -1):
             try:
-                self.win1.addstr(lpos, 1, str(self.hist_lines[-1 - (self.w1heigth -2 - lpos)]), curses.color_pair(7))
+                # -1 is to start from the last line
+                # - so we go down the list
+                # heigth of the window - 
+                self.win1.addstr(lpos, 1, str(self.hist_lines[-1 - (self.w1heigth - 2 - lpos)]), curses.color_pair(7))
             except IndexError:
                 pass
             self.refresh()
@@ -208,6 +221,7 @@ class runner:
         self.rfile = rfile
         self.ui = ui()
         self.threshold = args.threshold
+        self.sound = args.sound
         self.ui.refresh_threshold(self.threshold)
 
     def stop(self):
@@ -219,7 +233,7 @@ class runner:
         while self.running :
             self.ui.update_status('Active')
             line = rfile.readline()
-            process_line(line, self.ui, self.threshold)
+            process_line(line, self.ui, self.threshold, self.sound)
             while sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
                 char = sys.stdin.read(1)
                 if char.strip() == "q":
@@ -232,6 +246,12 @@ class runner:
                 elif char.strip() == "S":
                     self.threshold -= 1
                     self.ui.refresh_threshold(self.threshold)
+                elif char.strip() == "m" and self.sound:
+                    self.sound = False
+                    self.ui.update_sound(self.sound)
+                elif char.strip() == "m" and not self.sound:
+                    self.sound = True
+                    self.ui.update_sound(self.sound)
                 #elif char.strip() == "a":
                 #    self.startfreq += 1
                 #    self.ui.refresh_startfreq(self.startfreq)
