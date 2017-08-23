@@ -9,6 +9,7 @@
 
 import argparse
 import sys
+import os
 from datetime import datetime
 from subprocess import Popen
 from subprocess import STDOUT
@@ -24,8 +25,12 @@ default_threshold = 10.8
 version = 0.5
 proc_lines = 0
 
-def process_line(line, ui):
+def process_line(line, ui, threshold):
+    """
+    Process one line of input
+    """
     global proc_lines
+    ui.update_status('Reading')
     line = line.split(',')
     time = line[0]
     hour = line[1]
@@ -36,7 +41,7 @@ def process_line(line, ui):
     if args.verbose > 2:
         print 'Time: {} MinFreq: {}, Maxfreq:{}, step={}'.format(time+' '+hour, minfreq, maxfreq, step)
     # Analyze the dbm values
-    dbm_threshold = args.threshold
+    dbm_threshold = threshold
     dbm_line = line[6:]
     max_value= float('-inf')
     max_pos= float('-inf')
@@ -68,35 +73,39 @@ def process_line(line, ui):
             print '\t\tDetection because {} freq were over the threshold: {}. Time: {}'.format(len(detection_dict), dbm_threshold, time+' '+hour)
             if args.sound:
                 pygame.mixer.music.play()
-
         else:
             if args.verbose > 1:
                 print '\t\tNo detection'
     elif args.search:
         # Get the freqs in the detection
         freq_line = ''
+        temp_uniq_dict = {}
+        top_freq = ''
         for index in detection_dict:
             # In mhz
             detection_freq = (float(minfreq) + (float(step) * index)) / float(1000000)
-            freq_line += ' {:0.3f}({})'.format(detection_freq, detection_dict[index]) + ','
-        freq_line = freq_line[:-1]
-        line = str(datetime.now()) + ' [' + str(len(detection_dict)) + '] ' + ': '
-        line += "#" * len(detection_dict) 
+            try:
+                temp = temp_uniq_dict[detection_freq] 
+                temp_uniq_dict[detection_freq] += 1
+            except KeyError:
+                temp_uniq_dict[detection_freq] = 1
+            detect_uniq_dict = sorted(temp_uniq_dict, key=temp_uniq_dict.get)
+            top_freq = str(detect_uniq_dict[0])
+        #    freq_line += ' {:0.3f}({})'.format(detection_freq, detection_dict[index]) + ','
+        #freq_line = freq_line[:-1]
+        line = '{:19} [{:>3}]|[{:>6.6}]: {:160.160}'.format(str(datetime.now())[:-7], str(len(detection_dict)), top_freq ,"#" * len(detection_dict))
         # Print the lines
         if args.verbose == 0 and len(detection_dict) > 0:
-            #print line
             ui.update_histogram(line)
             if args.sound:
                 pygame.mixer.music.play()
         elif args.verbose == 1 and len(detection_dict) > 0:
-            #print line
             ui.update_histogram(line)
             print '\t[' + freq_line + ']'
             if args.sound:
                 pygame.mixer.music.play()
         elif args.verbose > 1:
             # Print even if there is no detection
-            #print line
             ui.update_histogram(line)
             # Print even if there is no detection, plus freqs
             if  freq_line:
@@ -106,49 +115,29 @@ def process_line(line, ui):
         # Play sound
         proc_lines += 1
 
-def process_file(ui):
+def process_file():
+    """
+    Reades a CSV file created by rtl_power and analysis it offline
+    """
     if args.verbose > 0:
         print 'Opening file {}'.format(args.file)
     try:
         f = open(args.file)
+        return f
     except IOError:
         print 'No such file.'
         sys.exit(-1)
-    for line in f:
-        process_line(line, ui)
-        ui.ask()
-    f.close()
 
-def process_stdin(ui):
+def process_stdin():
     """
+    Executes the rtl_power tool and gets the CSV formatted data 
     """
-    # Rtl_power produces a compact CSV file with minimal redundancy. The columns are:
-    # Timestamps are ISO-8601
-    # date, time, Hz low, Hz high, Hz step, samples, dB, dB, dB, ...
-    # Date and time apply across the entire row. The exact frequency of a dB value can be found by (hz_low + N * hz_step). The samples column indicated how many points went into each average.
-
     read_lines = 0
-    # Specific for a given frequency at 113Mhz
-    #command = 'rtl_power -f 113M:114M:4000Khz -g 25 -i 1 -e 14400 -'
-    # Range of normal FM transmitters
-    #command = 'rtl_power -f 100M:900M:4000Khz -g 25 -i 1 -e 14400 -'
-    # For Baby Monitor
-    #command = 'rtl_power -f 600M:900M:4000Khz -g 25 -i 1 -e 14400 -'
-    # Complete range of the DVB-T+DAB+FM
-    #command = 'rtl_power -f 50M:1760M:4000Khz -g 25 -i 1 -e 14400 -'
-    #command = 'rtl_power -f 200M:1760M:4000Khz -g 25 -i 1 -e 14400 -'
     # It will run by default for 24hs
-    command = 'rtl_power -f ' + args.startgreq + 'M:' + args.endfreq + 'M:' + args.stepfreq+ 'Khz -g 25 -i 1 -e 86400 -'
-    p = Popen(command, shell=True, stdout=PIPE, bufsize=1)
-    line = p.stdout.readline()
-    while line:
-        process_line(line)
-        ui.ask()
-        read_lines += 1
-        line = p.stdout.readline()
-    if args.verbose:
-        print 'Processed Lines: {}'.format(proc_lines)
-        print 'Original Lines: {}'.format(read_lines)
+    command = 'rtl_power -f ' + str(args.startfreq) + 'M:' + str(args.endfreq) + 'M:' + str(args.stepfreq) + 'Khz -g 25 -i 1 -e 86400 -'
+    FNULL = open(os.devnull, 'w')
+    p = Popen(command, shell=True, stdout=PIPE, bufsize=1, stderr=FNULL)
+    return p.stdout
 
 class ui:
     def __init__(self):
@@ -156,21 +145,25 @@ class ui:
         curses.noecho()
         curses.cbreak()
         curses.curs_set(0)
+        curses.start_color()
+        curses.use_default_colors()
+        for i in range(0, curses.COLORS):
+            curses.init_pair(i + 1, i, -1)
         self.stdscr.keypad(1)
         self.hist_lines = []
-        self.w1heigth = 31
+        self.w1heigth = 44
 
         # curses.newwin(DOWN RIGHT CORNER y from top, DOWN RIGHT CORNER x from left , TOP LEFT CORNER y from top , TOP LEFT CORNER x from left)
         # 0 means the size of the current window
         self.win1 = curses.newwin(self.w1heigth, 204, 0, 0)
         self.win1.border(0)
         self.pan1 = curses.panel.new_panel(self.win1)
-        self.win2 = curses.newwin(0, 0, 31, 0)
+        self.win2 = curses.newwin(0, 0, self.w1heigth, 0)
         self.win2.border(0)
         self.pan3 = curses.panel.new_panel(self.win2)
-        self.win1.addstr(1, 1, "Location Signal")
-        self.win2.addstr(1, 1, "Status: Active.")
-        self.win2.addstr(2, 1, "Press 's' to increase sensitivity or 'q' to quit.")
+        self.win1.addstr(1, 1, "Location Signal (the more, the closer)", curses.color_pair(4))
+        self.update_status('Active')
+        self.win2.addstr(2, 1, "Press 's' to increase the threshold (less sensitivity), 'S' to decresase the threshold (more sensitivity) or 'q' to quit.", curses.color_pair(4))
         self.pan1.hide()
 
     def refresh(self):
@@ -178,15 +171,20 @@ class ui:
         self.win1.refresh()
         self.win2.refresh()
 
-    def refresh_sensitivity(self, sensitivity):
-        self.win2.addstr(1, 17, "Window Sensitivity: {}".format(sensitivity))
+    def refresh_threshold(self, threshold):
+        self.win2.addstr(1, 25, "Threshold: {}".format(threshold), curses.color_pair(4))
+        self.refresh()
+
+    def update_status(self, text):
+        status = '{:15.15}'.format(text)
+        self.win2.addstr(1, 1, "Status: {}".format(status), curses.color_pair(4))
         self.refresh()
 
     def update_histogram(self, text):
         self.hist_lines.append(text)
         for lpos in range(self.w1heigth - 2, 1, -1):
             try:
-                self.win1.addstr(lpos, 1, str(self.hist_lines[-1 - (self.w1heigth -2 - lpos)]))
+                self.win1.addstr(lpos, 1, str(self.hist_lines[-1 - (self.w1heigth -2 - lpos)]), curses.color_pair(7))
             except IndexError:
                 pass
             self.refresh()
@@ -205,11 +203,12 @@ class runner:
     """
     Class to read the input and manage the input lines
     """
-    def __init__(self):
+    def __init__(self, rfile):
         self.running = False
+        self.rfile = rfile
         self.ui = ui()
-        self.sensitivity = args.threshold
-        self.ui.refresh_sensitivity(self.sensitivity)
+        self.threshold = args.threshold
+        self.ui.refresh_threshold(self.threshold)
 
     def stop(self):
         self.running = False
@@ -217,27 +216,28 @@ class runner:
     def run(self):
         self.running = True
 
-        if args.file:
-            process_file(self.ui)
-        else:
-            process_stdin(self.ui)
-        
-    #    self.loop()
-
-    #def loop(self):
         while self.running :
+            self.ui.update_status('Active')
+            line = rfile.readline()
+            process_line(line, self.ui, self.threshold)
             while sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
-                line = sys.stdin.read(1)
-                if line.strip() == "q":
+                char = sys.stdin.read(1)
+                if char.strip() == "q":
                     self.stop()
                     self.ui.quit_ui()
                     break
-                elif line.strip() == "s":
-                    self.sensitivity += 1
-                    self.ui.refresh_sensitivity(self.sensitivity)
-                elif line.strip() == "S":
-                    self.sensitivity -= 1
-                    self.ui.refresh_sensitivity(self.sensitivity)
+                elif char.strip() == "s":
+                    self.threshold += 1
+                    self.ui.refresh_threshold(self.threshold)
+                elif char.strip() == "S":
+                    self.threshold -= 1
+                    self.ui.refresh_threshold(self.threshold)
+                #elif char.strip() == "a":
+                #    self.startfreq += 1
+                #    self.ui.refresh_startfreq(self.startfreq)
+                #elif char.strip() == "A":
+                #    self.startfreq -= 1
+                #    self.ui.refresh_startfreq(self.startfreq)
             self.ui.refresh()
 
 ####################
@@ -252,9 +252,9 @@ if __name__ == "__main__":
     parser.add_argument('-F', '--detfreqthreshold', help='Second threshold in our paper. It is the threshold of the amount of frequencies that should be over the dbm threshold to have a detection.', action='store', required=False, type=int, default=1)
     parser.add_argument('-s', '--search', help='Search mode. Prints the amount of frequencies found to be over the specified threshold of -t. The more, the closer. In this mode, the -F threshold is not used.', action='store_true', required=False)
     parser.add_argument('-S', '--sound', help='Play a sound when there is some detection in this time frame.', action='store_true', required=False)
-    parser.add_argument('-a', '--startfreq', help='Start frequency for rtl_power. Defaults to 50 MHz', action='store_true', required=False, default=50)
-    parser.add_argument('-b', '--endfreq', help='End frequency for rtl_power. Defaults to 1760 MHz (USB device)', action='store_true', required=False, default=1760)
-    parser.add_argument('-c', '--stepfreq', help='Step frequency for rtl_power. Defaults to 4000 MHz', action='store_true', required=False, default=1760)
+    parser.add_argument('-a', '--startfreq', help='Start frequency for rtl_power. Defaults to 50 MHz', action='store', type=int, required=False, default=50)
+    parser.add_argument('-b', '--endfreq', help='End frequency for rtl_power. Defaults to 1760 MHz (USB device)', action='store', type=int, required=False, default=1760)
+    parser.add_argument('-c', '--stepfreq', help='Step frequency for rtl_power. Defaults to 4000 MHz', action='store', type=int, required=False, default=1760)
     args = parser.parse_args()
 
     if args.verbose > 0:
@@ -270,7 +270,11 @@ if __name__ == "__main__":
         pygame.mixer.music.load('detection.mp3')
 
     try:
-        r = runner()
+        if args.file:
+            rfile = process_file()
+        else:
+            rfile = process_stdin()
+        r = runner(rfile)
         r.run()
     except KeyboardInterrupt:
         print 'Exiting.'
