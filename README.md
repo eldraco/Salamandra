@@ -16,6 +16,8 @@ Salamandra needs the rtl_power software installed in your computer. To install i
 
     sudo port install rtl-sdr
 
+If you don't have ports in your MAC, see [port installation](https://www.macports.org/install.php)
+
 - On Linux: 
 
     apt-get install rtl-sdr
@@ -58,3 +60,8 @@ To actually create the file with rtl_power, from 111MHz to 114MHz, with 4000Khz 
 - The wider the range, the more probabilities to find mics
 - Once you know the prob freq you can narrow it down with the parameters
 
+
+# TODO
+- Separate the FP by
+    - Sound generation
+    - Discard the frequencies that do not look like analog audio (Equidistant freqs)
