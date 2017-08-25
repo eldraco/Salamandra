@@ -12,17 +12,16 @@ import sys
 import os
 from datetime import datetime
 from subprocess import Popen
-from subprocess import STDOUT
 from subprocess import PIPE
-import curses, curses.panel
+import curses
+import curses.panel
 import time
-import sys
 import select
-import random
 
 
 default_threshold = 10.8
 version = '0.5alpha'
+
 
 def process_line(line, ui, threshold, sound):
     """
@@ -40,12 +39,12 @@ def process_line(line, ui, threshold, sound):
     except IndexError:
         return False
     if args.verbose > 2:
-        print 'Time: {} MinFreq: {}, Maxfreq:{}, step={}'.format(time+' '+hour, minfreq, maxfreq, step)
+        print('Time: {} MinFreq: {}, Maxfreq:{}, step={}'.format(time + ' ' + hour, minfreq, maxfreq, step))
     # Analyze the dbm values
     dbm_threshold = threshold
     dbm_line = line[6:]
-    max_value= float('-inf')
-    max_pos= float('-inf')
+    max_value = float('-inf')
+    max_pos = float('-inf')
     max_values_dict = {}
     index = 0
     detection_dict = {}
@@ -57,26 +56,26 @@ def process_line(line, ui, threshold, sound):
         if value >= dbm_threshold:
             detection_dict[index] = value
         index += 1
-    # Largest detection 
+    # Largest detection
     detection_freq = float(minfreq) + (float(step) * max_pos)
     detection_value = max_value
     if args.verbose > 2:
-        print '\tMax value in this line: {}, at freq {}'.format(detection_value, detection_freq)
+        print('\tMax value in this line: {}, at freq {}'.format(detection_value, detection_freq))
     # Were there any other detections?
     sorted_detection_dict = sorted(detection_dict, key=detection_dict.get, reverse=True)
     # When there is a detection?
     if not args.search:
         # 1 When at least 1 frequency is over the threshold
         if detection_value >= dbm_threshold:
-            print '\t\tDetection in freq: {} with Dbm {}. Time: {}'.format(detection_freq, max_value, time+' '+hour)
+            print('\t\tDetection in freq: {} with Dbm {}. Time: {}'.format(detection_freq, max_value, time + ' ' + hour))
         # 2 When more than threshold freqencies are over the threshold
         if len(detection_dict) >= args.detfreqthreshold:
-            print '\t\tDetection because {} freq were over the threshold: {}. Time: {}'.format(len(detection_dict), dbm_threshold, time+' '+hour)
+            print('\t\tDetection because {} freq were over the threshold: {}. Time: {}'.format(len(detection_dict), dbm_threshold, time + ' ' + hour))
             if sound:
                 pygame.mixer.music.play()
         else:
             if args.verbose > 1:
-                print '\t\tNo detection'
+                print('\t\tNo detection')
     elif args.search:
         # Get the freqs in the detection
         freq_line = ''
@@ -86,15 +85,15 @@ def process_line(line, ui, threshold, sound):
             # In mhz
             detection_freq = (float(minfreq) + (float(step) * index)) / float(1000000)
             try:
-                temp = temp_uniq_dict[detection_freq] 
+                temp = temp_uniq_dict[detection_freq]
                 temp_uniq_dict[detection_freq] += 1
             except KeyError:
                 temp_uniq_dict[detection_freq] = 1
             detect_uniq_dict = sorted(temp_uniq_dict, key=temp_uniq_dict.get)
             top_freq = str(detect_uniq_dict[0])
         #    freq_line += ' {:0.3f}({})'.format(detection_freq, detection_dict[index]) + ','
-        #freq_line = freq_line[:-1]
-        line = '{:19} ({:>3}) [{:>6.6}]: {:160.160}'.format(str(datetime.now())[:-7], str(len(detection_dict)), top_freq ,"#" * len(detection_dict))
+        # freq_line = freq_line[:-1]
+        line = '{:19} ({:>3}) [{:>6.6}]: {:160.160}'.format(str(datetime.now())[:-7], str(len(detection_dict)), top_freq, "#" * len(detection_dict))
         # Print the lines
         if args.verbose == 0 and len(detection_dict) > 0:
             ui.update_histogram(line)
@@ -102,34 +101,36 @@ def process_line(line, ui, threshold, sound):
                 pygame.mixer.music.play()
         elif args.verbose == 1 and len(detection_dict) > 0:
             ui.update_histogram(line)
-            print '\t[' + freq_line + ']'
+            print('\t[' + freq_line + ']')
             if sound:
                 pygame.mixer.music.play()
         elif args.verbose > 1:
             # Print even if there is no detection
             ui.update_histogram(line)
             # Print even if there is no detection, plus freqs
-            if  freq_line:
-                print '\t[' + freq_line + ']'
+            if freq_line:
+                print('\t[' + freq_line + ']')
             if len(detection_dict) > 0 and sound:
                 pygame.mixer.music.play()
+
 
 def process_file():
     """
     Reades a CSV file created by rtl_power and analysis it offline
     """
     if args.verbose > 0:
-        print 'Opening file {}'.format(args.file)
+        print('Opening file {}'.format(args.file))
     try:
         f = open(args.file)
         return f
     except IOError:
-        print 'No such file.'
+        print('No such file.')
         sys.exit(-1)
+
 
 def process_stdin():
     """
-    Executes the rtl_power tool and gets the CSV formatted data 
+    Executes the rtl_power tool and gets the CSV formatted data
     """
     read_lines = 0
     # It will run by default for 24hs
@@ -137,6 +138,7 @@ def process_stdin():
     FNULL = open(os.devnull, 'w')
     p = Popen(command, shell=True, stdout=PIPE, bufsize=1, stderr=FNULL)
     return p.stdout
+
 
 class ui:
     def __init__(self):
@@ -151,7 +153,7 @@ class ui:
         self.curr_height, self.curr_width = self.stdscr.getmaxyx()
         self.stdscr.keypad(1)
         self.hist_lines = []
-        #self.w1height = self.curr_height * 90 /100
+        # self.w1height = self.curr_height * 90 /100
         self.w1height = self.curr_height - 5
         self.w1width = self.curr_width
 
@@ -192,7 +194,7 @@ class ui:
         self.refresh()
 
     def update_hour(self):
-        self.win2.addstr(3, self.w1width - 45 , 'Current Time: ' + str(datetime.now()) ,curses.color_pair(9))
+        self.win2.addstr(3, self.w1width - 45, 'Current Time: ' + str(datetime.now()), curses.color_pair(9))
         self.refresh()
 
     def update_histogram(self, text):
@@ -205,7 +207,7 @@ class ui:
             try:
                 # -1 is to start from the last line
                 # - so we go down the list
-                # height of the window - 
+                # height of the window -
                 self.win1.addstr(lpos, 1, str(self.hist_lines[-1 - (self.w1height - 2 - lpos)])[:self.w1width - 2], curses.color_pair(7))
             except IndexError:
                 pass
@@ -217,7 +219,7 @@ class ui:
         curses.curs_set(1)
         curses.echo()
         curses.endwin()
-        print "UI quitted"
+        print("UI quitted")
         exit(0)
 
 
@@ -239,7 +241,7 @@ class runner:
     def run(self):
         self.running = True
 
-        while self.running :
+        while self.running:
             self.ui.update_status('Active')
             self.ui.update_hour()
             line = rfile.readline()
@@ -264,6 +266,7 @@ class runner:
                     self.ui.update_sound(self.sound)
             self.ui.refresh()
 
+
 ####################
 # Main
 ####################
@@ -282,8 +285,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.verbose > 0:
-        print 'Salamandra Hidden Microphone Detector. Version {}\n'.format(str(version))
-
+        print('Salamandra Hidden Microphone Detector. Version {}\n'.format(version))
 
     if args.sound:
         import pygame.mixer
@@ -301,7 +303,4 @@ if __name__ == "__main__":
         r = runner(rfile)
         r.run()
     except KeyboardInterrupt:
-        print 'Exiting.'
-
-
-
+        print('Exiting.')
