@@ -22,7 +22,6 @@ import select
 default_threshold = 10.8
 version = '0.5alpha'
 
-
 def process_line(line, ui, threshold, sound):
     """
     Process one line of input
@@ -91,8 +90,6 @@ def process_line(line, ui, threshold, sound):
                 temp_uniq_dict[detection_freq] = 1
             detect_uniq_dict = sorted(temp_uniq_dict, key=temp_uniq_dict.get)
             top_freq = str(detect_uniq_dict[0])
-        #    freq_line += ' {:0.3f}({})'.format(detection_freq, detection_dict[index]) + ','
-        # freq_line = freq_line[:-1]
         line = '{:19} ({:>3}) [{:>6.6}]: {:160.160}'.format(str(datetime.now())[:-7], str(len(detection_dict)), top_freq, "#" * len(detection_dict))
         # Print the lines
         if args.verbose == 0 and len(detection_dict) > 0:
@@ -153,7 +150,6 @@ class ui:
         self.curr_height, self.curr_width = self.stdscr.getmaxyx()
         self.stdscr.keypad(1)
         self.hist_lines = []
-        # self.w1height = self.curr_height * 90 /100
         self.w1height = self.curr_height - 5
         self.w1width = self.curr_width
 
@@ -207,7 +203,7 @@ class ui:
             try:
                 # -1 is to start from the last line
                 # - so we go down the list
-                # height of the window -
+                # height of the window - 
                 self.win1.addstr(lpos, 1, str(self.hist_lines[-1 - (self.w1height - 2 - lpos)])[:self.w1width - 2], curses.color_pair(7))
             except IndexError:
                 pass
