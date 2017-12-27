@@ -17,10 +17,11 @@ import curses
 import curses.panel
 import time
 import select
+import pygame.mixer
 
 
 default_threshold = 10.8
-version = '0.5alpha'
+version = '0.6alpha'
 
 def process_line(line, ui, threshold, sound):
     """
@@ -65,16 +66,19 @@ def process_line(line, ui, threshold, sound):
     # When there is a detection?
     if not args.search:
         # 1 When at least 1 frequency is over the threshold
-        if detection_value >= dbm_threshold:
-            print('\t\tDetection in freq: {} with Dbm {}. Time: {}'.format(detection_freq, max_value, time + ' ' + hour))
+        #if detection_value >= dbm_threshold:
+        #    line = '\t\tDetection in freq: {} with Dbm {}. Time: {}'.format(detection_freq, max_value, time + ' ' + hour)
         # 2 When more than threshold freqencies are over the threshold
         if len(detection_dict) >= args.detfreqthreshold:
-            print('\t\tDetection because {} freq were over the threshold: {}. Time: {}'.format(len(detection_dict), dbm_threshold, time + ' ' + hour))
+            textline = '\t\tDetection because {} freq were over the threshold: {}. Time: {}'.format(len(detection_dict), dbm_threshold, time + ' ' + hour)
+            ui.update_histogram(textline)
             if sound:
                 pygame.mixer.music.play()
         else:
             if args.verbose > 1:
-                print('\t\tNo detection')
+                textline = '\t\tNo detection'
+                ui.update_histogram(textline)
+    # This is the default mode of operation. The search with the histogram
     elif args.search:
         # Get the freqs in the detection
         freq_line = ''
@@ -90,23 +94,25 @@ def process_line(line, ui, threshold, sound):
                 temp_uniq_dict[detection_freq] = 1
             detect_uniq_dict = sorted(temp_uniq_dict, key=temp_uniq_dict.get)
             top_freq = str(detect_uniq_dict[0])
+        # Here we print the histogram
         line = '{:19} ({:>3}) [{:>6.6}]: {:160.160}'.format(str(datetime.now())[:-7], str(len(detection_dict)), top_freq, "#" * len(detection_dict))
         # Print the lines
         if args.verbose == 0 and len(detection_dict) > 0:
             ui.update_histogram(line)
+            ui.update_status('DETECTION')
             if sound:
                 pygame.mixer.music.play()
         elif args.verbose == 1 and len(detection_dict) > 0:
             ui.update_histogram(line)
-            print('\t[' + freq_line + ']')
+            #print('\t[' + freq_line + ']')
             if sound:
                 pygame.mixer.music.play()
         elif args.verbose > 1:
             # Print even if there is no detection
             ui.update_histogram(line)
             # Print even if there is no detection, plus freqs
-            if freq_line:
-                print('\t[' + freq_line + ']')
+            #if freq_line:
+            #    print('\t[' + freq_line + ']')
             if len(detection_dict) > 0 and sound:
                 pygame.mixer.music.play()
 
@@ -163,7 +169,7 @@ class ui:
         self.pan3 = curses.panel.new_panel(self.win2)
         self.win1.addstr(1, 1, "Location Signal (the more, the closer)", curses.color_pair(4))
         self.win1.addstr(2, 1, "DateTime (Amount of peaks) [Top Freq Detected MHz] Histogram", curses.color_pair(4))
-        self.update_status('Active')
+        self.update_status('Detecting...')
         self.win2.addstr(2, 1, "Press 's' to increase the threshold (less sensitivity), 'S' to decresase the threshold (more sensitivity).", curses.color_pair(4))
         self.win2.addstr(3, 1, "Press 'm' to toggle sound, or 'q' to quit.", curses.color_pair(4))
         self.update_sound(args.sound)
@@ -182,6 +188,10 @@ class ui:
     def update_sound(self, sound):
         line = '{:5}'.format(str(sound))
         self.win2.addstr(1, 45, "Sound: {}".format(line), curses.color_pair(2))
+        self.refresh()
+
+    def update_freq(self, freq1, freq2):
+        self.win2.addstr(1, 60, "Min Freq: {}. Max Freq: {}".format(freq1, freq2), curses.color_pair(2))
         self.refresh()
 
     def update_status(self, text):
@@ -238,8 +248,9 @@ class runner:
         self.running = True
 
         while self.running:
-            self.ui.update_status('Active')
+            self.ui.update_status('Detecting...')
             self.ui.update_hour()
+            self.ui.update_freq(int(args.startfreq), int(args.endfreq))
             line = rfile.readline()
             resp = process_line(line, self.ui, self.threshold, self.sound)
             while sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
@@ -263,6 +274,7 @@ class runner:
             self.ui.refresh()
 
 
+
 ####################
 # Main
 ####################
@@ -270,26 +282,25 @@ if __name__ == "__main__":
     # Parse the parameters
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--file', help='CSV file from rtl_power.', action='store', required=False)
-    parser.add_argument('-t', '--threshold', help='DBm threshold. First threshold in our paper.', action='store', required=True, type=float, default=default_threshold)
+    parser.add_argument('-t', '--threshold', help='DBm threshold. First threshold in our paper.', action='store', required=False, type=float, default=default_threshold)
     parser.add_argument('-v', '--verbose', help='Verbose level.', action='store', required=False, type=int, default=0)
     parser.add_argument('-F', '--detfreqthreshold', help='Second threshold in our paper. It is the threshold of the amount of frequencies that should be over the dbm threshold to have a detection.', action='store', required=False, type=int, default=1)
-    parser.add_argument('-s', '--search', help='Search mode. Prints the amount of frequencies found to be over the specified threshold of -t. The more, the closer. In this mode, the -F threshold is not used.', action='store_true', required=False)
-    parser.add_argument('-S', '--sound', help='Play a sound when there is some detection in this time frame.', action='store_true', required=False)
-    parser.add_argument('-a', '--startfreq', help='Start frequency for rtl_power. Defaults to 50 MHz', action='store', type=int, required=False, default=50)
-    parser.add_argument('-b', '--endfreq', help='End frequency for rtl_power. Defaults to 1760 MHz (USB device)', action='store', type=int, required=False, default=1760)
-    parser.add_argument('-c', '--stepfreq', help='Step frequency for rtl_power. Defaults to 4000 MHz', action='store', type=int, required=False, default=1760)
+    parser.add_argument('-s', '--search', help='Search mode. Prints the amount of frequencies found to be over the specified threshold of -t. The more, the closer. In this mode, the -F threshold is not used.', action='store_true', required=False, default=True)
+    parser.add_argument('-S', '--sound', help='Play a sound when there is some detection in this time frame.', action='store_true', required=False, default=True)
+    parser.add_argument('-a', '--startfreq', help='Start frequency for rtl_power. Defaults to 50 MHz', action='store', type=int, required=False, default=100)
+    parser.add_argument('-b', '--endfreq', help='End frequency for rtl_power. Defaults to 1760 MHz (USB device)', action='store', type=int, required=False, default=400)
+    parser.add_argument('-c', '--stepfreq', help='Step frequency for rtl_power. Defaults to 4000 MHz', action='store', type=int, required=False, default=4000)
     args = parser.parse_args()
 
     if args.verbose > 0:
         print('Salamandra Hidden Microphone Detector. Version {}\n'.format(version))
 
+    pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=8196)
     if args.sound:
-        import pygame.mixer
-        pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=8196)
         pygame.mixer.music.load('start3.mp3')
         pygame.mixer.music.play()
-        time.sleep(1)
-        pygame.mixer.music.load('detection.mp3')
+    time.sleep(1)
+    pygame.mixer.music.load('detection.mp3')
 
     try:
         if args.file:
