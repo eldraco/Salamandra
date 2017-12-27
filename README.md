@@ -1,12 +1,12 @@
 # Salamandra Spy Microphone Detection Tool
 
-Salamandra is a tool to detect and __locate__ spy microphones in closed environments. It find microphones based on the strength of the signal sent by the microphone and the amount of noise and overlapped frequencies. Based on the generated noise it can estimate how close or far away you are from the mic.
+Salamandra is a tool to detect and __locate__ spy microphones in closed environments. It find microphones based on the strength of the signal sent by the microphone and the amount of noise and overlapped frequencies. Based on the generated noise it can estimate how close or far away you are from the microphone.
 
 
 # Installation
 
 ## USB SDR Device
-To use salamandra you nee to have a SDR (Software Define Radio) device. It can be any from the cheap USB devices, such as [this](http://www.dx.com/p/rtl2832u-r820t-mini-dvb-t-dab-fm-usb-digital-tv-dongle-black-170541).
+To use Salamandra you nee to have a SDR (Software Define Radio) device. It can be any from the cheap USB devices, such as [this](http://www.dx.com/p/rtl2832u-r820t-mini-dvb-t-dab-fm-usb-digital-tv-dongle-black-170541).
 
 ## rtl_power software
 
@@ -33,9 +33,15 @@ And you should see one device detected.
 
 # Usage
 
+## Basic usage for detecting microphones
+
+    ./salamandra.py 
+
+This command will use a default threshold of 10.8, a min freq of 100Mhz, a max freq of 400Mhz and sound. You can change the default values with parameters.
+
 ## Location Mode to find Hidden Microphones
 
-- Run salamandra with a threshold of 0, starting in the frequency 100MHz and ending in the frequency 200MHz. Search is activated with (-s). And make sounds (-S)
+- Run Salamandra with a threshold of 0, starting in the frequency 100MHz and ending in the frequency 200MHz. Search is activated with (-s). And make sounds (-S)
 
     ./salamandra.py -t 0 -a 100 -b 200 -s -S
 
@@ -49,7 +55,7 @@ To actually create the file with rtl_power, from 111MHz to 114MHz, with 4000Khz 
 
 ## Detection Mode (deprecated now). To detect microphones in one pass.
 
-- Run salamandra with a threshold of 0, starting in the frequency 100MHz and ending in the frequency 200MHz. Search is activated with (-s). And make sounds (-S)
+- Run Salamandra with a threshold of 0, starting in the frequency 100MHz and ending in the frequency 200MHz. Search is activated with (-s). And make sounds (-S)
 
     ./salamandra.py -t 10.3 -a 100 -b 200 -F 2
 
@@ -57,11 +63,15 @@ To actually create the file with rtl_power, from 111MHz to 114MHz, with 4000Khz 
 ## Tips
 
 - The wider the range of frequencies selected, the longer the analysis takes.
-- The wider the range, the more probabilities to find mics
-- Once you know the prob freq you can narrow it down with the parameters
+- The wider the range, the more probabilities to find microphones.
+- Once you know the prob freq you can narrow it down with the parameters.
 
 
 # TODO
-- Separate the FP by
-    - Sound generation
+1. Make more clear if there is a detection or not
+2. Separate the FP by
+    - Sound generation based on the length of the histogram
     - Discard the frequencies that do not look like analog audio (Equidistant freqs)
+3. Logs in file
+4. Make the execution of rtl_power in another process in the background
+
