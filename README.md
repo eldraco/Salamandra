@@ -14,14 +14,14 @@ Salamandra needs the rtl_power software installed in your computer. To install i
 
 ### On MacOS
 
-Using [macports](https://www.macports.org/install.php)):
+Using [macports](https://www.macports.org/install.php):
 
 ```
 sudo port install rtl-sdr
 pip install pygame
 ```
 
-Using [homebrew](https://brew.sh/)):
+Using [homebrew](https://brew.sh/):
 
 ```
 brew install smpeg
