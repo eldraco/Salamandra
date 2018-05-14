@@ -74,4 +74,5 @@ To actually create the file with rtl_power, from 111MHz to 114MHz, with 4000Khz 
     - Discard the frequencies that do not look like analog audio (Equidistant freqs)
 3. Logs in file
 4. Make the execution of rtl_power in another process in the background
+5. Use silent sounds: https://blog.acolyer.org/2018/05/11/inaudible-voice-commands-the-long-range-attack-and-defense/
 
