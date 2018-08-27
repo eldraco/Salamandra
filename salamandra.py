@@ -29,6 +29,8 @@ def process_line(line, ui, threshold, sound):
     """
     ui.update_status('Reading')
     try:
+        if type(line) is bytes:
+            line = line.decode("utf-8")
         line = line.split(',')
         time = line[0]
         hour = line[1]
