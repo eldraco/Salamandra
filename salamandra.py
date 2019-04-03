@@ -297,10 +297,10 @@ if __name__ == "__main__":
 
     pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=8196)
     if args.sound:
-        pygame.mixer.music.load('start3.mp3')
+        pygame.mixer.music.load('start3.ogg')
         pygame.mixer.music.play()
     time.sleep(1)
-    pygame.mixer.music.load('detection.mp3')
+    pygame.mixer.music.load('detection.ogg')
 
     try:
         if args.file:
