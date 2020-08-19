@@ -29,7 +29,7 @@ def process_line(line, ui, threshold, sound):
     """
     ui.update_status('Reading')
     try:
-        line = line.split(',')
+        line = line.decode('utf8').split(',')
         time = line[0]
         hour = line[1]
         minfreq = line[2]
