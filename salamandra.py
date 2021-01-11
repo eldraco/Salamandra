@@ -1,5 +1,5 @@
-#! /usr/bin/env python
-#
+#!/usr/bin/python3
+
 # Salamandra
 # Free-software SDR-based Tool that reads the output of rtl_power to detect and locate the presence of micropones transmitting
 # Author: Sebastian Garcia eldraco@gmail.com, sebastian.garcia@agents.fel.cvut.cz
@@ -29,7 +29,7 @@ def process_line(line, ui, threshold, sound):
     """
     ui.update_status('Reading')
     try:
-        line = line.split(',')
+        line = line.decode().split(',')
         time = line[0]
         hour = line[1]
         minfreq = line[2]
@@ -297,10 +297,10 @@ if __name__ == "__main__":
 
     pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=8196)
     if args.sound:
-        pygame.mixer.music.load('start3.mp3')
+        pygame.mixer.music.load('start3.ogg')
         pygame.mixer.music.play()
     time.sleep(1)
-    pygame.mixer.music.load('detection.mp3')
+    pygame.mixer.music.load('detection.ogg')
 
     try:
         if args.file:
