@@ -29,7 +29,10 @@ def process_line(line, ui, threshold, sound):
     """
     ui.update_status('Reading')
     try:
-        line = line.decode().split(',')
+        if sys.version_info < (3, 0):
+            line.split(',')
+        else:
+            line = line.decode().split(',')
         time = line[0]
         hour = line[1]
         minfreq = line[2]
